@@ -249,7 +249,7 @@ class Controller_Daemon extends Controller_CLI {
 
 		if ( count($this->_pids))
 		{
-			Kohana::$log('error','Queue. Could not kill all children');
+			Kohana::$log->add('error','Queue. Could not kill all children');
 		}
 
 		// Remove PID file
