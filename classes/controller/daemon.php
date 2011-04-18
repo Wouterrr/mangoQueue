@@ -55,7 +55,7 @@ class Controller_Daemon extends Controller_CLI {
 		if ( empty($this->_config))
 		{
 			// configuration object not found - log & exit
-			Kohana::$log->add(Kohana::ERROR, 'Queue. Config not found ("daemon.' . $name . '"). Exiting.');
+			Kohana::$log->add(Log::ERROR, 'Queue. Config not found ("daemon.' . $name . '"). Exiting.');
 			echo 'Queue. Config not found ("daemon.' . $name . '"). Exiting.' . PHP_EOL;
 			exit;
 		}
@@ -76,13 +76,13 @@ class Controller_Daemon extends Controller_CLI {
 		if ( $pid == -1)
 		{
 			// Error - fork failed
-			Kohana::$log->add(Kohana::ERROR, 'MangoQueue. Initial fork failed');
+			Kohana::$log->add(Log::ERROR, 'MangoQueue. Initial fork failed');
 			exit;
 		}
 		elseif ( $pid)
 		{
 			// Fork successful - exit parent (daemon continues in child)
-			Kohana::$log->add(Kohana::DEBUG, 'MangoQueue. Daemon created succesfully at: ' . $pid);
+			Kohana::$log->add(Log::DEBUG, 'MangoQueue. Daemon created succesfully at: ' . $pid);
 
 			// store PID in file
 			file_put_contents( $this->_config['pid_path'], $pid);
@@ -92,7 +92,7 @@ class Controller_Daemon extends Controller_CLI {
 		{
 			// Background process - run daemon
 
-			Kohana::$log->add(Kohana::DEBUG,strtr('Queue. Config :config loaded, max: :max, sleep: :sleep', array(
+			Kohana::$log->add(Log::DEBUG,strtr('Queue. Config :config loaded, max: :max, sleep: :sleep', array(
 				':config' => $this->_name,
 				':max'    => $this->_config['max'],
 				':sleep'  => $this->_config['sleep']
@@ -119,7 +119,7 @@ class Controller_Daemon extends Controller_CLI {
 
 			if ( $pid !== 0)
 			{
-				Kohana::$log->add(Kohana::DEBUG,'Sending SIGTERM to pid ' . $pid);
+				Kohana::$log->add(Log::DEBUG,'Sending SIGTERM to pid ' . $pid);
 				echo 'Sending SIGTERM to pid ' . $pid . PHP_EOL;
 
 				posix_kill($pid, SIGTERM);
@@ -136,13 +136,13 @@ class Controller_Daemon extends Controller_CLI {
 			}
 			else
 			{
-				Kohana::$log->add(Kohana::DEBUG, "Could not find MangoQueue pid in file :".$this->_config['pid_path']);
+				Kohana::$log->add(Log::DEBUG, "Could not find MangoQueue pid in file :".$this->_config['pid_path']);
 				echo "Could not find MangoQueue pid in file :".$this->_config['pid_path'].PHP_EOL;
 			}
 		}
 		else
 		{
-			Kohana::$log->add(Kohana::DEBUG, "MangoQueue pid file ".$this->_config['pid_path']." does not exist");
+			Kohana::$log->add(Log::DEBUG, "MangoQueue pid file ".$this->_config['pid_path']." does not exist");
 			echo "MangoQueue pid file ".$this->_config['pid_path']." does not exist".PHP_EOL;
 		}
 	}
@@ -192,7 +192,7 @@ class Controller_Daemon extends Controller_CLI {
 
 				if ( $pid == -1)
 				{
-					Kohana::$log->add(Kohana::ERROR, 'Queue. Could not spawn child task process.');
+					Kohana::$log->add(Log::ERROR, 'Queue. Could not spawn child task process.');
 					exit;
 				}
 				elseif ( $pid)
@@ -210,7 +210,7 @@ class Controller_Daemon extends Controller_CLI {
 					catch(Exception $e)
 					{
 						// Task failed - log message
-						Kohana::$log->add(Kohana::ERROR, strtr('Queue. Task failed - route: :route, uri: :uri, msg: :msg', array(
+						Kohana::$log->add(Log::ERROR, strtr('Queue. Task failed - route: :route, uri: :uri, msg: :msg', array(
 							':route' => $task->route,
 							':uri'   => http_build_query($task->uri->as_array()),
 							':msg'   => $e->getMessage()
@@ -290,7 +290,7 @@ class Controller_Daemon extends Controller_CLI {
 			case SIGTERM:
 				// Kill signal
 				$this->_sigterm = TRUE;
-				Kohana::$log->add(Kohana::DEBUG, 'Queue. Hit a SIGTERM');
+				Kohana::$log->add(Log::DEBUG, 'Queue. Hit a SIGTERM');
 			break;
 		}
 	}
