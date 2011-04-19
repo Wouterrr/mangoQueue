@@ -225,7 +225,7 @@ class Controller_Daemon extends Controller_CLI {
 								));
 							}
 
-							if ( $response->status() < 200 && $response->status() > 299)
+							if ( ! isset($error) && ($response->status() < 200 || $response->status() > 299))
 							{
 								// Invalid response
 								$error = strtr("Invalid response status (:status) while executing :uri,\n\n:request\n\n:response", array(
