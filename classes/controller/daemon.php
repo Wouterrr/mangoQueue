@@ -239,7 +239,7 @@ class Controller_Daemon extends Controller_CLI {
 
 						if ( isset($error))
 						{
-							else if ( $this->_config['keep_failed'])
+							if ( $this->_config['keep_failed'])
 							{
 								$task->values( array(
 									'failed' => TRUE,
