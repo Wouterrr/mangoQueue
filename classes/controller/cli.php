@@ -12,9 +12,10 @@ class Controller_CLI extends Controller {
 
 		if ( ! Kohana::$is_cli)
 		{
-			// Deny none CLI access
-			throw new Kohana_Exception('The requested route does not exist: :route',
-				array(':route' => $this->request->route));
+			// Fake 404 error
+			throw new HTTP_Exception_404('Unable to find a route to match the URI: :uri', array(
+				':uri' => $this->request->uri(),
+			));
 		}
 	}
 }

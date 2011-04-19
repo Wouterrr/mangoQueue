@@ -43,13 +43,9 @@ class Controller_Daemon extends Controller_CLI {
 		pcntl_signal(SIGTERM, array($this, 'sig_handler'));
 		declare(ticks = 1);
 
-		// first parameter is configuration name
-		$params = $this->request->param();
-		$this->_name = $name = count($params)
-			? reset($params)
-			: 'default';
-
-		// load configuration object
+		// load config file
+		$params        = $this->request->param();
+		$this->_name   = $name = count($params) ? reset($params) : 'default';
 		$this->_config = Kohana::config('daemon')->$name;
 
 		if ( empty($this->_config))
@@ -76,13 +72,13 @@ class Controller_Daemon extends Controller_CLI {
 		if ( $pid == -1)
 		{
 			// Error - fork failed
-			Kohana::$log->add(Log::ERROR, 'MangoQueue. Initial fork failed');
+			Kohana::$log->add($this->_config['log']['error'], 'MangoQueue. Initial fork failed');
 			exit;
 		}
 		elseif ( $pid)
 		{
 			// Fork successful - exit parent (daemon continues in child)
-			Kohana::$log->add(Log::DEBUG, 'MangoQueue. Daemon created succesfully at: ' . $pid);
+			Kohana::$log->add($this->_config['log']['debug'], 'MangoQueue. Daemon created succesfully at: ' . $pid);
 
 			// store PID in file
 			file_put_contents( $this->_config['pid_path'], $pid);
@@ -92,7 +88,7 @@ class Controller_Daemon extends Controller_CLI {
 		{
 			// Background process - run daemon
 
-			Kohana::$log->add(Log::DEBUG,strtr('Queue. Config :config loaded, max: :max, sleep: :sleep', array(
+			Kohana::$log->add($this->_config['log']['debug'],strtr('Queue. Config :config loaded, max: :max, sleep: :sleep', array(
 				':config' => $this->_name,
 				':max'    => $this->_config['max'],
 				':sleep'  => $this->_config['sleep']
@@ -119,7 +115,7 @@ class Controller_Daemon extends Controller_CLI {
 
 			if ( $pid !== 0)
 			{
-				Kohana::$log->add(Log::DEBUG,'Sending SIGTERM to pid ' . $pid);
+				Kohana::$log->add($this->_config['log']['debug'],'Sending SIGTERM to pid ' . $pid);
 				echo 'Sending SIGTERM to pid ' . $pid . PHP_EOL;
 
 				posix_kill($pid, SIGTERM);
@@ -136,13 +132,13 @@ class Controller_Daemon extends Controller_CLI {
 			}
 			else
 			{
-				Kohana::$log->add(Log::DEBUG, "Could not find MangoQueue pid in file :".$this->_config['pid_path']);
+				Kohana::$log->add($this->_config['log']['debug'], "Could not find MangoQueue pid in file :".$this->_config['pid_path']);
 				echo "Could not find MangoQueue pid in file :".$this->_config['pid_path'].PHP_EOL;
 			}
 		}
 		else
 		{
-			Kohana::$log->add(Log::DEBUG, "MangoQueue pid file ".$this->_config['pid_path']." does not exist");
+			Kohana::$log->add($this->_config['log']['debug'], "MangoQueue pid file ".$this->_config['pid_path']." does not exist");
 			echo "MangoQueue pid file ".$this->_config['pid_path']." does not exist".PHP_EOL;
 		}
 	}
@@ -172,59 +168,106 @@ class Controller_Daemon extends Controller_CLI {
 	{
 		while ( ! $this->_sigterm)
 		{
-			// Find first task that is not being executed
-			$task = Mango::factory('task')
-				->load(1, array('_id' => 1), NULL, array(), array('e' => array('$exists' => FALSE)));
-
-			if ( $task->loaded() && count($this->_pids) < $this->_config['max'])
+			if ( count($this->_pids) < $this->_config['max'])
 			{
-				// Task found
+				// find next task
+				$task  = Mango::factory('task')->get_next();
 
-				// Update task status
-				$task->e = TRUE;
-				$task->update();
-
-				// Write log to prevent memory issues
-				Kohana::$log->write();
-
-				// Fork process to execute task
-				$pid = pcntl_fork();
-
-				if ( $pid == -1)
+				if ( $task->loaded())
 				{
-					Kohana::$log->add(Log::ERROR, 'Queue. Could not spawn child task process.');
-					exit;
-				}
-				elseif ( $pid)
-				{
-					// Parent - add the child's PID to the running list
-					$this->_pids[$pid] = time();
+					// Write log to prevent memory issues
+					Kohana::$log->write();
+
+					// Fork process to execute task
+					$pid = pcntl_fork();
+
+					if ( $pid == -1)
+					{
+						Kohana::$log->add($this->_config['log']['error'], 'Queue. Could not spawn child task process.');
+						exit;
+					}
+					elseif ( $pid)
+					{
+						// Parent - add the child's PID to the running list
+						$this->_pids[$pid] = time();
+					}
+					else
+					{
+						$request = unserialize($task->request);
+
+						if ( ! $request instanceof Request)
+						{
+							// invalid tasks are discarded immediately
+							Kohana::$log->add($this->_config['log']['error'], strtr('Discarded invalid task - ":request"', array(
+								':request' => $task->request
+							)));
+
+							$task->delete();
+							exit;
+						}
+
+						for ( $i = 0; $i < $this->_config['max_tries']; $i++)
+						{
+							$error = NULL;
+
+							try
+							{
+								// execute task
+								$response = $request->execute();
+							}
+							catch(Exception $e)
+							{
+								// Request failed
+								$error = strtr("Unable to execute task: :uri, (:msg),\n\n:request", array(
+									':uri'     => $request->uri(),
+									':msg'     => $e->getMessage(),
+									':request' => $request->render(FALSE)
+								));
+							}
+
+							if ( $response->status() < 200 && $response->status() > 299)
+							{
+								// Invalid response
+								$error = strtr("Invalid response status (:status) while executing :uri,\n\n:request\n\n:response", array(
+									':uri'      => $request->uri(),
+									':status'   => $response->status(),
+									':request'  => $request->render(FALSE),
+									':response' => $request->render(TRUE)
+								));
+							}
+						}
+
+						if ( isset($error))
+						{
+							else if ( $this->_config['keep_failed'])
+							{
+								$task->values( array(
+									'failed' => TRUE,
+									'error'  => $error
+								))->update();
+							}
+
+							// log error
+							Kohana::$log->add($this->_config['log']['error'], $error);
+						}
+						else
+						{
+							// job executed successfully
+							$task->delete();
+						}
+
+						exit;
+					}
 				}
 				else
 				{
-					try
-					{
-						// Child - Execute task
-						Request::factory( Route::get( $task->route )->uri( $task->uri->as_array() ) )->execute();
-					}
-					catch(Exception $e)
-					{
-						// Task failed - log message
-						Kohana::$log->add(Log::ERROR, strtr('Queue. Task failed - route: :route, uri: :uri, msg: :msg', array(
-							':route' => $task->route,
-							':uri'   => http_build_query($task->uri->as_array()),
-							':msg'   => $e->getMessage()
-						)));
-					}
-
-					// Remove task from queue
-					$task->delete();
-					exit;
+					// queue is empty
+					usleep($this->_config['sleep']);
 				}
 			}
 			else
 			{
-				// No task in queue - sleep
+				// daemon is busy
 				usleep($this->_config['sleep']);
 			}
 		}
@@ -249,7 +292,7 @@ class Controller_Daemon extends Controller_CLI {
 
 		if ( count($this->_pids))
 		{
-			Kohana::$log->add('error','Queue. Could not kill all children');
+			Kohana::$log->add($this->_config['log']['error'],'Queue. Could not kill all children');
 		}
 
 		// Remove PID file
@@ -290,7 +333,7 @@ class Controller_Daemon extends Controller_CLI {
 			case SIGTERM:
 				// Kill signal
 				$this->_sigterm = TRUE;
-				Kohana::$log->add(Log::DEBUG, 'Queue. Hit a SIGTERM');
+				Kohana::$log->add($this->_config['log']['debug'], 'Queue. Hit a SIGTERM');
 			break;
 		}
 	}
