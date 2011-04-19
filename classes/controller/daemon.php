@@ -250,9 +250,9 @@ class Controller_Daemon extends Controller_CLI {
 							// log error
 							Kohana::$log->add($this->_config['log']['error'], $error);
 						}
-						else
+
+						if ( ! isset($error) || ! $this->_config['keep_failed'])
 						{
-							// job executed successfully
 							$task->delete();
 						}
 
