@@ -218,7 +218,7 @@ class Controller_Daemon extends Controller_CLI {
 							catch(Exception $e)
 							{
 								// Request failed
-								$error = strtr("Unable to execute task: :uri, (:msg),\n\n:request", array(
+								$error = strtr("Unable to execute task: :uri, (:msg),\n:request", array(
 									':uri'     => $request->uri(),
 									':msg'     => $e->getMessage(),
 									':request' => $request->render(FALSE)
@@ -228,7 +228,7 @@ class Controller_Daemon extends Controller_CLI {
 							if ( ! isset($error) && ($response->status() < 200 || $response->status() > 299))
 							{
 								// Invalid response
-								$error = strtr("Invalid response status (:status) while executing :uri,\n\n:request\n\n:response", array(
+								$error = strtr("Invalid response status (:status) while executing :uri,\n:request :response", array(
 									':uri'      => $request->uri(),
 									':status'   => $response->status(),
 									':request'  => $request->render(FALSE),
