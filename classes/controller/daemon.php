@@ -193,7 +193,9 @@ class Controller_Daemon extends Controller_CLI {
 					}
 					else
 					{
-						$request = unserialize($task->request);
+						$request = isset($task->uri)
+							? Request::factory($task->uri)
+							: unserialize($task->request);
 
 						if ( ! $request instanceof Request)
 						{
