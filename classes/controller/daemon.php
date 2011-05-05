@@ -183,6 +183,9 @@ class Controller_Daemon extends Controller_CLI {
 
 					if ( $pid == -1)
 					{
+						// you can't use the same MongoDB connection in different processes - causes strange errors
+						MangoDB::$instances = array();
+
 						Kohana::$log->add($this->_config['log']['error'], 'Queue. Could not spawn child task process.');
 						exit;
 					}
@@ -193,6 +196,9 @@ class Controller_Daemon extends Controller_CLI {
 					}
 					else
 					{
+						// you can't use the same MongoDB connection in different processes - causes strange errors
+						MangoDB::$instances = array();
+
 						$request = isset($task->uri)
 							? Request::factory($task->uri)
 							: unserialize($task->request);
