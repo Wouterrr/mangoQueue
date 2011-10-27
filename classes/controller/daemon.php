@@ -261,7 +261,7 @@ class Controller_Daemon extends Controller_CLI {
 						}
 						else
 						{
-							if ( ! $this->_config['keep_completed'])
+							if ( $this->_config['keep_completed'])
 							{
 								$task->complete();
 							}
