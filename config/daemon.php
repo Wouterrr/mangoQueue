@@ -20,6 +20,10 @@ return array(
 		// and manage (delete/requeue) them manually!!! Don't let the queue fill up with failed tasks!!
 		'keep_failed' => FALSE,
 
+		// do you want to keep completed tasks in the queue? If you want to, you'll have to check for completed tasks yourself
+		// and delete them manually!!! Don't let the queue fill up with completed tasks!!
+		'keep_completed' => FALSE,
+
 		// log types
 		'log' => array(
 			'error' => Log::ERROR,

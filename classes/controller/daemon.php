@@ -247,21 +247,28 @@ class Controller_Daemon extends Controller_CLI {
 
 						if ( isset($error))
 						{
-							if ( $this->_config['keep_failed'])
-							{
-								$task->values( array(
-									'failed' => TRUE,
-									'error'  => $error
-								))->update();
-							}
-
 							// log error
 							Kohana::$log->add($this->_config['log']['error'], $error);
-						}
 
-						if ( ! isset($error) || ! $this->_config['keep_failed'])
+							if ( $this->_config['keep_failed'])
+							{
+								$task->fail($error);
+							}
+							else
+							{
+								$task->delete();
+							}
+						}
+						else
 						{
-							$task->delete();
+							if ( ! $this->_config['keep_completed'])
+							{
+								$task->complete();
+							}
+							else
+							{
+								$task->delete();
+							}
 						}
 
 						exit;
