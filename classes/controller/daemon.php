@@ -46,7 +46,7 @@ class Controller_Daemon extends Controller_CLI {
 		// load config file
 		$params        = $this->request->param();
 		$this->_name   = $name = count($params) ? reset($params) : 'default';
-		$this->_config = Kohana::config('daemon')->$name;
+		$this->_config = Kohana::$config->load('daemon')->$name;
 
 		if ( empty($this->_config))
 		{
