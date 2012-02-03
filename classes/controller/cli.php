@@ -10,7 +10,7 @@ class Controller_CLI extends Controller {
 	{
 		parent::before();
 
-		if ( ! Kohana::$is_cli)
+		if ( Kohana::$environment !== Kohana::DEVELOPMENT && ! Kohana::$is_cli)
 		{
 			// Fake 404 error
 			throw new HTTP_Exception_404('Unable to find a route to match the URI: :uri', array(
