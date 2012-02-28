@@ -67,7 +67,7 @@ class Controller_Daemon extends Controller_CLI {
 	public function action_index()
 	{
 		// fork into background
-		$pid = pcntl_fork();
+		$pid = $this->fork();
 
 		if ( $pid == -1)
 		{
@@ -178,14 +178,10 @@ class Controller_Daemon extends Controller_CLI {
 					// Write log to prevent memory issues
 					Kohana::$log->write();
 
-					// Fork process to execute task
-					$pid = pcntl_fork();
+					$pid = $this->fork();
 
 					if ( $pid == -1)
 					{
-						// you can't use the same MongoDB connection in different processes - causes strange errors
-						MangoDB::$instances = array();
-
 						Kohana::$log->add($this->_config['log']['error'], 'Queue. Could not spawn child task process.');
 						exit;
 					}
@@ -196,9 +192,6 @@ class Controller_Daemon extends Controller_CLI {
 					}
 					else
 					{
-						// you can't use the same MongoDB connection in different processes - causes strange errors
-						MangoDB::$instances = array();
-
 						$request = isset($task->uri)
 							? Request::factory($task->uri)
 							: unserialize($task->request);
@@ -337,7 +330,7 @@ class Controller_Daemon extends Controller_CLI {
 	{
 		switch ($signo)
 		{
-			case SIGCHLD: 
+			case SIGCHLD:
 				// Child died signal
 				while( ($pid = pcntl_wait($status, WNOHANG || WUNTRACED)) > 0)
 				{
@@ -351,5 +344,17 @@ class Controller_Daemon extends Controller_CLI {
 				Kohana::$log->add($this->_config['log']['debug'], 'Queue. Hit a SIGTERM');
 			break;
 		}
+	}
+
+	protected function fork()
+	{
+		// close all database connections before forking
+		foreach ( MangoDB::$instances as $instance)
+		{
+			$instance->disconnect();
+		}
+
+		// Fork process to execute task
+		return pcntl_fork();
 	}
 }
