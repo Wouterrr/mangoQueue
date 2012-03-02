@@ -16,12 +16,10 @@ return array(
 		// number of times a task should be tried before it is assumed failed
 		'max_tries' => 1,
 
-		// do you want to keep failed tasks in the queue? If you want to, you'll have to check for failed tasks yourself
-		// and manage (delete/requeue) them manually!!! Don't let the queue fill up with failed tasks!!
-		'keep_failed' => FALSE,
+		// keep unsuccesfully executed tasks - make sure you check and delete them manually or the queue will clog up
+		'keep_failed' => TRUE,
 
-		// do you want to keep completed tasks in the queue? If you want to, you'll have to check for completed tasks yourself
-		// and delete them manually!!! Don't let the queue fill up with completed tasks!!
+		// keep successfully executed tasks - make sure you check and delete them regularly or the queue will clog up
 		'keep_completed' => FALSE,
 
 		// log types

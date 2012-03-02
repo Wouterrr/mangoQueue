@@ -171,100 +171,62 @@ class Controller_Daemon extends Controller_CLI {
 			if ( count($this->_pids) < $this->_config['max'])
 			{
 				// find next task
-				$task  = Mango::factory('task')->get_next();
+				$task = Mango::factory('task')->get_next();
 
 				if ( $task->loaded())
 				{
-					// Write log to prevent memory issues
-					Kohana::$log->write();
-
-					$pid = $this->fork();
-
-					if ( $pid == -1)
+					if ( ! $task->valid())
 					{
-						Kohana::$log->add($this->_config['log']['error'], 'Queue. Could not spawn child task process.');
-						exit;
-					}
-					elseif ( $pid)
-					{
-						// Parent - add the child's PID to the running list
-						$this->_pids[$pid] = time();
+						// invalid tasks are discarded immediately
+						Kohana::$log->add($this->_config['log']['error'], strtr('Discarded invalid task - uri :uri, request ":request"', array(
+							':uri'     => $task->uri,
+							':request' => $task->request
+						)));
+
+						$task->delete();
 					}
 					else
 					{
-						$request = isset($task->uri)
-							? Request::factory($task->uri)
-							: unserialize($task->request);
+						// Write log to prevent memory issues
+						Kohana::$log->write();
 
-						if ( ! $request instanceof Request)
+						$pid = $this->fork();
+
+						if ( $pid == -1)
 						{
-							// invalid tasks are discarded immediately
-							Kohana::$log->add($this->_config['log']['error'], strtr('Discarded invalid task - ":request"', array(
-								':request' => $task->request
-							)));
-
-							$task->delete();
+							Kohana::$log->add($this->_config['log']['error'], 'Queue. Could not spawn child task process.');
 							exit;
 						}
-
-						for ( $i = 0; $i < $this->_config['max_tries']; $i++)
+						elseif ( $pid)
 						{
-							$error = NULL;
-
-							try
-							{
-								// execute task
-								$response = $request->execute();
-							}
-							catch(Exception $e)
-							{
-								// Request failed
-								$error = strtr("Unable to execute task: :uri, (:msg),\n:request", array(
-									':uri'     => $request->uri(),
-									':msg'     => $e->getMessage(),
-									':request' => $request->render(FALSE)
-								));
-							}
-
-							if ( ! isset($error) && ($response->status() < 200 || $response->status() > 299))
-							{
-								// Invalid response
-								$error = strtr("Invalid response status (:status) while executing :uri,\n:request :response", array(
-									':uri'      => $request->uri(),
-									':status'   => $response->status(),
-									':request'  => $request->render(FALSE),
-									':response' => $request->render(TRUE)
-								));
-							}
-						}
-
-						if ( isset($error))
-						{
-							// log error
-							Kohana::$log->add($this->_config['log']['error'], $error);
-
-							if ( $this->_config['keep_failed'])
-							{
-								$task->fail($error);
-							}
-							else
-							{
-								$task->delete();
-							}
+							// Parent - add the child's PID to the running list
+							$this->_pids[$pid] = time();
 						}
 						else
 						{
-							if ( $this->_config['keep_completed'])
+							$success = $task->execute($this->_config['max_tries']);
+
+							if ( ! $success)
 							{
-								$task->complete();
+								// if failed tasks are deleted, add request & response data to error message so it is logged
+								$message = $this->_config['keep_failed']
+									? $task->message
+									: strtr($task->message . '\n :request \n :response', array(
+											':request'  => $task->request()->render(),
+											':response' => $task->response_data
+										));
+
+								Kohana::$log->add($this->_config['log']['error'], $message);
 							}
-							else
+
+							if ( ($task->status === 'completed' && ! $this->_config['keep_completed']) || ($task->status === 'failed' && ! $this->_config['keep_failed']))
 							{
+								// delete task
 								$task->delete();
 							}
-						}
 
-						exit;
+							exit;
+						}
 					}
 				}
 				else
