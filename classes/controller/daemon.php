@@ -224,6 +224,11 @@ class Controller_Daemon extends Controller_CLI {
 								// delete task
 								$task->delete();
 							}
+							else
+							{
+								// update task
+								$task->update();
+							}
 
 							exit;
 						}
