@@ -213,7 +213,7 @@ class Controller_Daemon extends Controller_CLI {
 									? $task->message
 									: strtr($task->message . '\n :request \n :response', array(
 											':request'  => $task->request()->render(),
-											':response' => $task->response_data
+											':response' => $task->response
 										));
 
 								Kohana::$log->add($this->_config['log']['error'], $message);
