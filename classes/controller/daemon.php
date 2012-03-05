@@ -66,6 +66,16 @@ class Controller_Daemon extends Controller_CLI {
 	 */
 	public function action_index()
 	{
+		// check if MangoQueue is already running
+		$pid = $this->status();
+
+		if ( $pid)
+		{
+			// it is, so no need to start anew
+			echo 'MangoQueue is already running at PID: ' . $pid . PHP_EOL;
+			return;
+		}
+
 		// fork into background
 		$pid = $this->fork();
 
@@ -109,37 +119,30 @@ class Controller_Daemon extends Controller_CLI {
 	 */
 	public function action_exit()
 	{
-		if ( file_exists( $this->_config['pid_path']))
+		// check if MangoQueue is running
+		$pid = $this->status();
+
+		if ( $pid)
 		{
-			$pid = file_get_contents($this->_config['pid_path']);
+			Kohana::$log->add($this->_config['log']['debug'],'Sending SIGTERM to pid ' . $pid);
+			echo 'Sending SIGTERM to pid ' . $pid . PHP_EOL;
 
-			if ( $pid !== 0)
+			// kill it
+			posix_kill($pid, SIGTERM);
+
+			if ( posix_get_last_error() === 0)
 			{
-				Kohana::$log->add($this->_config['log']['debug'],'Sending SIGTERM to pid ' . $pid);
-				echo 'Sending SIGTERM to pid ' . $pid . PHP_EOL;
-
-				posix_kill($pid, SIGTERM);
-
-				if ( posix_get_last_error() ===0)
-				{
-					echo "Signal send SIGTERM to pid ".$pid.PHP_EOL;
-				}
-				else
-				{
-					echo "An error occured while sending SIGTERM".PHP_EOL;
-					unlink($this->_config['pid_path']);
-				}
+				echo "Signal send SIGTERM to pid ".$pid.PHP_EOL;
 			}
 			else
 			{
-				Kohana::$log->add($this->_config['log']['debug'], "Could not find MangoQueue pid in file :".$this->_config['pid_path']);
-				echo "Could not find MangoQueue pid in file :".$this->_config['pid_path'].PHP_EOL;
+				echo "An error occured while sending SIGTERM".PHP_EOL;
+				$this->unlink_pid();
 			}
 		}
 		else
 		{
-			Kohana::$log->add($this->_config['log']['debug'], "MangoQueue pid file ".$this->_config['pid_path']." does not exist");
-			echo "MangoQueue pid file ".$this->_config['pid_path']." does not exist".PHP_EOL;
+			echo 'MangoQueue is not running'.PHP_EOL;
 		}
 	}
 
@@ -150,15 +153,70 @@ class Controller_Daemon extends Controller_CLI {
 	 */
 	public function action_status()
 	{
-		$pid = file_exists($this->_config['pid_path'])
-			? file_get_contents($this->_config['pid_path'])
-			: FALSE;
+		// check if MangoQueue is running
+		$pid = $this->status();
 
 		echo $pid
 			? 'MangoQueue is running at PID: ' . $pid . PHP_EOL
-			: 'MangoQueue is NOT running' . PHP_EOL;
+			: 'MangoQueue is not running' . PHP_EOL;
 
 		echo 'MangoQueue has ' . Mango::factory('task')->db()->count('tasks') . ' tasks in queue'.PHP_EOL;
+	}
+
+	/**
+	 * Returns PID of MangoQueue process if it is running. This method will also detect and clean up any unclean shutdowns
+	 * (when the PID file exists but the process doesn't)
+	 *
+	 * @return   int|FALSE  process ID when running, FALSE when not running
+	 */
+	protected function status()
+	{
+		$pid = $this->get_pid();
+		$run = $this->is_running($pid);
+
+		if ( $pid && ! $run)
+		{
+			echo 'Unclean shutdown detected!' . PHP_EOL;
+
+			Kohana::$log->add($this->_config['log']['error'], 'Unclean shutdown detected - pid file exists while process is not running');
+			Kohana::$log->write(); // clear log
+
+			$this->unlink_pid();
+		}
+
+		return $run ? $pid : FALSE;
+	}
+
+	/**
+	 * Deletes PID file
+	 */
+	protected function unlink_pid()
+	{
+		unlink($this->_config['pid_path']);
+	}
+
+	/**
+	 * Reads PID file for PID
+	 *
+	 * @return int|FALSE   PID when found, FALSE otherwise
+	 */
+	protected function get_pid()
+	{
+		return file_exists($this->_config['pid_path'])
+			? file_get_contents($this->_config['pid_path'])
+			: FALSE;
+	}
+
+	/**
+	 * Checks if process PID is running by looking for /proc/$PID
+	 *
+	 * @return   boolean  process with ID $pid is running
+	 */
+	protected function is_running($pid)
+	{
+		return $pid
+			? file_exists('/proc/' . $pid)
+			: FALSE;
 	}
 
 	/*
@@ -271,7 +329,7 @@ class Controller_Daemon extends Controller_CLI {
 		}
 
 		// Remove PID file
-		unlink($this->_config['pid_path']);
+		$this->unlink_pid();
 
 		echo 'MangoQueue exited' . PHP_EOL;
 	}
@@ -313,6 +371,11 @@ class Controller_Daemon extends Controller_CLI {
 		}
 	}
 
+	/**
+	 * Forks process into background
+	 *
+	 * @return  int   result of fork
+	 */
 	protected function fork()
 	{
 		// close all database connections before forking
