@@ -236,9 +236,8 @@ class Controller_Daemon extends Controller_CLI {
 					if ( ! $task->valid())
 					{
 						// invalid tasks are discarded immediately
-						Kohana::$log->add($this->_config['log']['error'], strtr('Discarded invalid task - uri :uri, request ":request"', array(
-							':uri'     => $task->uri,
-							':request' => $task->request
+						Kohana::$log->add($this->_config['log']['error'], strtr('Discarded invalid :type task"', array(
+							':type'    => $task->type
 						)));
 
 						$task->delete();
@@ -266,15 +265,8 @@ class Controller_Daemon extends Controller_CLI {
 
 							if ( ! $success)
 							{
-								// if failed tasks are deleted, add request & response data to error message so it is logged
-								$message = $this->_config['keep_failed']
-									? $task->message
-									: strtr($task->message . '\n :request \n :response', array(
-											':request'  => $task->request()->render(),
-											':response' => $task->response
-										));
-
-								Kohana::$log->add($this->_config['log']['error'], $message);
+								// log error
+								Kohana::$log->add($this->_config['log']['error'], $task->error_message( ! $this->_config['keep_failed']));
 							}
 
 							if ( ($task->status === 'completed' && ! $this->_config['keep_completed']) || ($task->status === 'failed' && ! $this->_config['keep_failed']))
