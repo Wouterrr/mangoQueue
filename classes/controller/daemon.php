@@ -263,6 +263,8 @@ class Controller_Daemon extends Controller_CLI {
 						{
 							$success = $task->execute($this->_config['max_tries']);
 
+							$task->status = $success ? 'completed' : 'failed';
+
 							if ( ! $success)
 							{
 								// log error
