@@ -261,11 +261,7 @@ class Controller_Daemon extends Controller_CLI {
 						}
 						else
 						{
-							$success = $task->execute($this->_config['max_tries']);
-
-							$task->status = $success ? 'completed' : 'failed';
-
-							if ( ! $success)
+							if ( ! $task->execute($this->_config['max_tries']))
 							{
 								// log error
 								Kohana::$log->add($this->_config['log']['error'], $task->error_message( ! $this->_config['keep_failed']));
