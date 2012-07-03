@@ -261,22 +261,7 @@ class Controller_Daemon extends Controller_CLI {
 						}
 						else
 						{
-							if ( ! $task->execute($this->_config['max_tries']))
-							{
-								// log error
-								Kohana::$log->add($this->_config['log']['error'], $task->error_message( ! $this->_config['keep_failed']));
-							}
-
-							if ( ($task->status === 'completed' && ! $this->_config['keep_completed']) || ($task->status === 'failed' && ! $this->_config['keep_failed']))
-							{
-								// delete task
-								$task->delete();
-							}
-							else
-							{
-								// update task
-								$task->update();
-							}
+							$task->execute($this->_config);
 
 							exit;
 						}
