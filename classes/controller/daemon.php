@@ -228,8 +228,19 @@ class Controller_Daemon extends Controller_CLI {
 		{
 			if ( count($this->_pids) < $this->_config['max'])
 			{
-				// find next task
-				$task = Mango::factory('task')->get_next();
+				try
+				{
+					// find next task
+					$task = Mango::factory('task')->get_next();
+				}
+				catch ( MongoException $e)
+				{
+					Kohana::$log->add($this->_config['log']['error'], 'Error loading next task. Exiting');
+					Kohana::$log->write();
+
+					$this->clean();
+					exit;
+				}
 
 				if ( $task->loaded())
 				{
