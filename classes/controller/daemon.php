@@ -235,6 +235,7 @@ class Controller_Daemon extends Controller_CLI {
 				}
 				catch ( MongoException $e)
 				{
+					Kohana::$log->add($this->_config['log']['error'], Kohana_Exception::text($e));
 					Kohana::$log->add($this->_config['log']['error'], 'Error loading next task. Exiting');
 					Kohana::$log->write();
 
