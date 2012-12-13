@@ -202,7 +202,7 @@ class Controller_Queue_Daemon extends Controller_CLI {
 	 */
 	protected function get_pid()
 	{
-		return file_exists($this->_config['pid_path'])
+		return is_file($this->_config['pid_path'])
 			? file_get_contents($this->_config['pid_path'])
 			: FALSE;
 	}
