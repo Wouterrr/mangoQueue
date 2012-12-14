@@ -215,7 +215,7 @@ class Controller_Queue_Daemon extends Controller_CLI {
 	protected function is_running($pid)
 	{
 		return $pid
-			? file_exists('/proc/' . $pid)
+			? is_file('/proc/' . $pid)
 			: FALSE;
 	}
 
