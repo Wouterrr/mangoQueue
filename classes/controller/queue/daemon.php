@@ -33,9 +33,6 @@ class Controller_Queue_Daemon extends Controller_CLI {
 	{
 		parent::before();
 
-		echo "\n";
-		echo "QUEUE - Environment: " . (Kohana::$environment == Kohana::PRODUCTION ? "PRODUCTION" : "DEVELOPMENT") . "\n";
-
 		// Setup
 		ini_set("max_execution_time", "0");
 		ini_set("max_input_time", "0");
