@@ -33,6 +33,9 @@ class Controller_Queue_Daemon extends Controller_CLI {
 	{
 		parent::before();
 
+		echo "\n";
+		echo "QUEUE - Environment: " . (Kohana::$environment == Kohana::PRODUCTION ? "PRODUCTION" : "DEVELOPMENT") . "\n";
+
 		// Setup
 		ini_set("max_execution_time", "0");
 		ini_set("max_input_time", "0");
@@ -52,7 +55,7 @@ class Controller_Queue_Daemon extends Controller_CLI {
 		{
 			// configuration object not found - log & exit
 			Kohana::$log->add(Log::ERROR, 'Queue. Config not found ("daemon.' . $name . '"). Exiting.');
-			echo 'Queue. Config not found ("daemon.' . $name . '"). Exiting.' . PHP_EOL;
+			echo 'QUEUE - Config not found ("daemon.' . $name . '"). Exiting.' . PHP_EOL;
 			exit;
 		}
 
@@ -72,7 +75,7 @@ class Controller_Queue_Daemon extends Controller_CLI {
 		if ( $pid)
 		{
 			// it is, so no need to start anew
-			echo 'MangoQueue is already running at PID: ' . $pid . PHP_EOL;
+			echo 'QUEUE - Already running at PID: ' . $pid . PHP_EOL;
 			return;
 		}
 
@@ -125,24 +128,24 @@ class Controller_Queue_Daemon extends Controller_CLI {
 		if ( $pid)
 		{
 			Kohana::$log->add($this->_config['log']['debug'],'Sending SIGTERM to pid ' . $pid);
-			echo 'Sending SIGTERM to pid ' . $pid . PHP_EOL;
+			echo 'QUEUE - Sending SIGTERM to pid ' . $pid . PHP_EOL;
 
 			// kill it
 			posix_kill($pid, SIGTERM);
 
 			if ( posix_get_last_error() === 0)
 			{
-				echo "Signal send SIGTERM to pid ".$pid.PHP_EOL;
+				echo "QUEUE - Signal send SIGTERM to pid ".$pid.PHP_EOL;
 			}
 			else
 			{
-				echo "An error occured while sending SIGTERM".PHP_EOL;
+				echo "QUEUE - An error occured while sending SIGTERM".PHP_EOL;
 				$this->unlink_pid();
 			}
 		}
 		else
 		{
-			echo 'MangoQueue is not running'.PHP_EOL;
+			echo 'QUEUE - not running'.PHP_EOL;
 		}
 	}
 
@@ -157,10 +160,10 @@ class Controller_Queue_Daemon extends Controller_CLI {
 		$pid = $this->status();
 
 		echo $pid
-			? 'MangoQueue is running at PID: ' . $pid . PHP_EOL
-			: 'MangoQueue is not running' . PHP_EOL;
+			? 'QUEUE - running at PID: ' . $pid . PHP_EOL
+			: 'QUEUE - not running' . PHP_EOL;
 
-		echo 'MangoQueue has ' . Mango::factory('task')->db()->count('tasks') . ' tasks in queue'.PHP_EOL;
+		echo 'QUEUE - status: ' . Mango::factory('task')->db()->count('tasks') . ' tasks in queue'.PHP_EOL;
 	}
 
 	/**
@@ -176,7 +179,7 @@ class Controller_Queue_Daemon extends Controller_CLI {
 
 		if ( $pid && ! $run)
 		{
-			echo 'Unclean shutdown detected!' . PHP_EOL;
+			echo 'QUEUE - Unclean shutdown detected!' . PHP_EOL;
 
 			Kohana::$log->add($this->_config['log']['error'], 'Unclean shutdown detected - pid file exists while process is not running');
 			Kohana::$log->write(); // clear log
@@ -318,7 +321,7 @@ class Controller_Queue_Daemon extends Controller_CLI {
 		// Remove PID file
 		$this->unlink_pid();
 
-		echo 'MangoQueue exited' . PHP_EOL;
+		echo 'QUEUE - exited' . PHP_EOL;
 	}
 
 	/**
